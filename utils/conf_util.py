@@ -21,3 +21,4 @@ class Cfg:
             self.seq_transformer_args = DictToObject(conf.get('seq_transformer_args', {}))
             self.run_args = DictToObject(conf.get('run_args', {}))
             self.dataset_args = DictToObject(conf.get('dataset_args', {}))
+            

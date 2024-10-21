@@ -19,6 +19,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('-f', '--yaml_file', help='The configuration file.', required=True)
     parser.add_argument('--multi_run_mode', help='Run multiple experiments with the same config.', action='store_true')
+    parser.add_argument('--gpu', type=int, default=0)
     args = parser.parse_args()
     conf_file = args.yaml_file
 
@@ -28,8 +29,8 @@ if __name__ == '__main__':
     cfg.model_args.sizes = sizes
 
     # cuda setting
-    if int(cfg.run_args.gpu) >= 0:
-        device = 'cuda:' + str(cfg.run_args.gpu)
+    if int(args.gpu) >= 0:
+        device = 'cuda:' + str(args.gpu)
     else:
         device = 'cpu'
     cfg.run_args.device = device
