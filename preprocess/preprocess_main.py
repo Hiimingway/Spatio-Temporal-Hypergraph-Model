@@ -131,3 +131,11 @@ def preprocess(cfg: Cfg):
         generate_hypergraph_from_file(sample_file, preprocessed_path, cfg.dataset_args)
 
     logging.info('[Preprocess] Done preprocessing.')
+if __name__ == '__main__':
+    # Parse arguments
+    conf_file = "./conf/best_conf/nyc.yml"
+
+    cfg = Cfg(conf_file)
+
+    # Preprocess data
+    preprocess(cfg)

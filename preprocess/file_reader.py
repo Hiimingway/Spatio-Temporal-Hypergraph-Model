@@ -20,12 +20,14 @@ class FileReaderBase:
 class FileReader(FileReaderBase):
     @classmethod
     def read_dataset(cls, file_name, dataset_name):
+        root_path = osp.join("./data", dataset_name)
         file_path = osp.join(cls.root_path, 'raw', file_name)
         if dataset_name == 'ca':
             df = pd.read_csv(file_path, sep=',')
             df['UTCTimeOffset'] = df['UTCTime'].apply(lambda x: datetime.strptime(x, "%Y-%m-%dT%H:%M:%SZ"))
             df['PoiCategoryName'] = df['PoiCategoryId']
         else:
+            file_path = osp.join(root_path, 'raw', file_name)
             df = pd.read_csv(file_path, sep='\t', encoding='latin-1', header=None)
             df.columns = [
                 'UserId', 'PoiId', 'PoiCategoryId', 'PoiCategoryName', 'Latitude', 'Longitude', 'TimezoneOffset',
@@ -112,25 +114,55 @@ class FileReader(FileReaderBase):
         df = df.sort_values(by=['UserId', 'UTCTimeOffset'], ascending=True)
 
         # generate pseudo session trajectory(temporal)
-        start_id = 0
-        pseudo_session_trajectory_id = [start_id]
+        current_session_id = 0
+        pseudo_session_trajectory_id = [current_session_id]
         start_user = df['UserId'].tolist()[0]
         time_interval = []
+        session_lengths = {}
         for user, time_diff in tqdm(zip(df['UserId'], df['UTCTimeOffset'].diff())):
             if pd.isna(time_diff):
                 time_interval.append(None)
+                session_length = 0  #The user only has one session
                 continue
             elif start_user != user:
-                # difference user
-                start_id += 1
+                # New user
                 start_user = user
+                current_session_id += 1
+                session_length = 1
             elif time_diff.total_seconds() / 60 > session_time_interval:
                 # same user, beyond interval
-                start_id += 1
+                current_session_id += 1  #session id
+                session_length = 1  #session length
+            else:
+                # Continue the same session
+                session_length += 1
+                
             time_interval.append(time_diff.total_seconds() / 60)
-            pseudo_session_trajectory_id.append(start_id)
-
+            pseudo_session_trajectory_id.append(current_session_id)
+            session_lengths[current_session_id] = session_length
+        
         assert len(pseudo_session_trajectory_id) == len(df)
+        
+        df['pseudo_session_trajectory_id'] = pseudo_session_trajectory_id
+        df['time_interval'] = time_interval
+
+        # Filter sessions that are too short and ensure at least 3 sessions per user
+        valid_sessions = {sid for sid, length in session_lengths.items() if length >= 3}
+        df = df[df['pseudo_session_trajectory_id'].isin(valid_sessions)]
+        
+        # Ensure each user has at least 3 sessions
+        session_counts = df.groupby('UserId')['pseudo_session_trajectory_id'].nunique()
+        valid_users = session_counts[session_counts >= 3].index
+        df = df[df['UserId'].isin(valid_users)]
+        
+        # Keep one traj for each test set.
+        if 'SplitTag' in df.columns:
+            test_df = df[df['SplitTag'] == 'test']
+            last_session_ids = test_df.groupby('UserId')['pseudo_session_trajectory_id'].max()
+            test_df = test_df[test_df['pseudo_session_trajectory_id'].isin(last_session_ids)]
+            df = df[df['SplitTag'] != 'test']
+            df = pd.concat([df, test_df], ignore_index=True)
+        
 
         # do label encoding
         if do_label_encode:
@@ -146,11 +178,17 @@ class FileReader(FileReaderBase):
                 pickle.dump([
                     poi_id_le, poi_category_le, user_id_le, hour_id_le, weekday_id_le,
                     padding_poi_ie, padding_poi_category, padding_user_id, padding_hour_id, padding_weekday_id
-                ], f)
-
+                ], f) 
+        
+        # Time can be reordered
         df['check_ins_id'] = df['UTCTimeOffset'].rank(ascending=True, method='first') - 1
-        df['time_interval'] = time_interval
-        df['pseudo_session_trajectory_id'] = pseudo_session_trajectory_id
+        # Recompute session ids to be consecutive for each user
+        
+        # Re-encode user IDs and trajectory IDs to ensure continuity
+        user_id_map = {id: idx for idx, id in enumerate(sorted(df['UserId'].unique()),1)}
+        traj_id_map = {id: idx for idx, id in enumerate(sorted(df['pseudo_session_trajectory_id'].unique()),1)}
+        df['UserId'] = df['UserId'].map(user_id_map)
+        df['pseudo_session_trajectory_id'] = df['pseudo_session_trajectory_id'].map(traj_id_map)
 
         # Ignore the first check-in of every trajectory when creating samples
         df = ignore_first(df)
@@ -163,9 +201,6 @@ class FileReader(FileReaderBase):
 
         trajectory_id_count = df.groupby(['pseudo_session_trajectory_id'])['check_ins_id'].count().reset_index()
         check_ins_count = trajectory_id_count[trajectory_id_count['check_ins_id'] == 1]
-
-        logging.info(
-            f"[Preprocess] pseudo session trajectory of single check-ins count: {len(check_ins_count)}, "
-            f"ratio: {len(check_ins_count) / len(trajectory_id_count)}."
-        )
         return df
+
+       

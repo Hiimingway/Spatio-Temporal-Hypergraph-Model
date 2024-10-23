@@ -181,7 +181,14 @@ def generate_ci2traj_pyg_data(data, traj_stat, traj_column, checkin_offset):
     )
     ci2traj_pyg_data.num_hyperedges = traj_stat.shape[0]
     return ci2traj_pyg_data
-
+"""
+        data,
+        traj_stat,
+        traj_column,
+        threshold,
+        filter_mode=filter_mode,
+        relation_type='inter'
+"""
 
 def generate_traj2traj_data(
         data,
@@ -243,11 +250,12 @@ def generate_traj2traj_data(
 
     # Filter 1: filter based on pre-define conditions
     # 1. different trajectory 2. source_endtime <= target_starttime
-    mask_1 = traj2traj.row != traj2traj.col
+    mask_1 = traj2traj.row != traj2traj.col  # different trajectory
     mask_2 = traj_stat.end_time[traj2traj.col].values <= traj_stat.start_time[traj2traj.row].values
     mask = mask_1 & mask_2
     if relation_type == 'inter':
         # 3. diffrent user
+        # traj_user_map['UserId'][traj_id]为traj_id对应的所有用户ID
         mask_3 = traj_user_map['UserId'][traj2traj.row].values != traj_user_map['UserId'][traj2traj.col].values
         mask = mask & mask_3
 
@@ -379,6 +387,9 @@ def filter_chunk(row, col, data, he_size, chunk_num=10, threshold=0.02, filter_m
         row_chunk = row[chunk_bin[i]:chunk_bin[i + 1]]
         col_chunk = col[chunk_bin[i]:chunk_bin[i + 1]]
         data_chunk = data[chunk_bin[i]:chunk_bin[i + 1]]
+        # he_size = traj_poi_map
+        # traj_poi_map = data[['PoiId', traj_column]].drop_duplicates()
+        # traj_size_adjust = traj_poi_map.groupby(traj_column).apply(len).tolist()
         source_size = np.array(list(map(he_size.__getitem__, row_chunk.tolist())))
         target_size = np.array(list(map(he_size.__getitem__, col_chunk.tolist())))
         if filter_mode == 'min size':

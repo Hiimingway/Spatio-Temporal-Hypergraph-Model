@@ -20,6 +20,7 @@ if __name__ == '__main__':
     parser.add_argument('-f', '--yaml_file', help='The configuration file.', required=True)
     parser.add_argument('--multi_run_mode', help='Run multiple experiments with the same config.', action='store_true')
     parser.add_argument('--gpu', type=int, default=0)
+    parser.add_argument('--dataset_name', type=str, choices=['Moscow','SaoPaulo','Shanghai','TKY'])
     args = parser.parse_args()
     conf_file = args.yaml_file
 
@@ -47,7 +48,10 @@ if __name__ == '__main__':
 
     current_time = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
     cfg.run_args.save_path = f'tensorboard/{current_time}/{cfg.dataset_args.dataset_name}'
-    cfg.run_args.log_path = f'log/{current_time}/{cfg.dataset_args.dataset_name}'
+    if args.dataset_name is None:
+        cfg.run_args.log_path = f'log/{current_time}/{cfg.dataset_args.dataset_name}'
+    else:
+        cfg.run_args.log_path = f'log/{current_time}/{args.dataset_name}'
 
     if not osp.isdir(cfg.run_args.save_path):
         os.makedirs(cfg.run_args.save_path)
@@ -62,12 +66,12 @@ if __name__ == '__main__':
         hparam_dict.update(hparam.__dict__)
     hparam_dict['seed'] = seed
     hparam_dict['sizes'] = '-'.join([str(item) for item in cfg.model_args.sizes])
-
-    # Preprocess data
-    preprocess(cfg)
-
-    # Initialize dataset
-    lbsn_dataset = LBSNDataset(cfg)
+    if args.dataset_name is None:
+        # Preprocess data
+        preprocess(cfg)
+        # Initialize dataset
+    lbsn_dataset = LBSNDataset(args, cfg)
+        
     cfg.dataset_args.spatial_slots = lbsn_dataset.spatial_slots
     cfg.dataset_args.num_user = lbsn_dataset.num_user
     cfg.dataset_args.num_poi = lbsn_dataset.num_poi
