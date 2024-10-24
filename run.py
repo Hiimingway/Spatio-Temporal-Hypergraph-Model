@@ -102,7 +102,7 @@ if __name__ == '__main__':
             max_time=lbsn_dataset.max_time_train,
             label=lbsn_dataset.label_train,
             batch_size=cfg.run_args.batch_size,
-            num_workers=0 if device == 'cpu' else cfg.run_args.num_workers,
+            # num_workers=0 if device == 'cpu' else cfg.run_args.num_workers,
             shuffle=True,
             pin_memory=True
         )
@@ -124,7 +124,7 @@ if __name__ == '__main__':
             max_time=lbsn_dataset.max_time_valid,
             label=lbsn_dataset.label_valid,
             batch_size=cfg.run_args.eval_batch_size,
-            num_workers=0 if device == 'cpu' else cfg.run_args.num_workers,
+            # num_workers=0 if device == 'cpu' else cfg.run_args.num_workers,
             shuffle=False,
             pin_memory=True
         )
@@ -146,7 +146,7 @@ if __name__ == '__main__':
             max_time=lbsn_dataset.max_time_test,
             label=lbsn_dataset.label_test,
             batch_size=cfg.run_args.eval_batch_size,
-            num_workers=0 if device == 'cpu' else cfg.run_args.num_workers,
+            # num_workers=0 if device == 'cpu' else cfg.run_args.num_workers,
             shuffle=False,
             pin_memory=True
         )

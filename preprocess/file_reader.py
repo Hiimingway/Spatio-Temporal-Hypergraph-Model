@@ -109,6 +109,10 @@ class FileReader(FileReaderBase):
         logging.info('[Preprocess - Train/Validate/Test Split] Done.')
         return df
 
+    
+        """
+        Continously and different for each user.
+        """
     @classmethod
     def generate_id(cls, df, session_time_interval, do_label_encode=True, only_last_metric=True):
         df = df.sort_values(by=['UserId', 'UTCTimeOffset'], ascending=True)
@@ -145,24 +149,35 @@ class FileReader(FileReaderBase):
         
         df['pseudo_session_trajectory_id'] = pseudo_session_trajectory_id
         df['time_interval'] = time_interval
-
-        # Filter sessions that are too short and ensure at least 3 sessions per user
-        valid_sessions = {sid for sid, length in session_lengths.items() if length >= 3}
-        df = df[df['pseudo_session_trajectory_id'].isin(valid_sessions)]
         
-        # Ensure each user has at least 3 sessions
-        session_counts = df.groupby('UserId')['pseudo_session_trajectory_id'].nunique()
-        valid_users = session_counts[session_counts >= 3].index
-        df = df[df['UserId'].isin(valid_users)]
-        
-        # Keep one traj for each test set.
         if 'SplitTag' in df.columns:
             test_df = df[df['SplitTag'] == 'test']
+            
+            # Ensure each trajectory has at least 4 points
+            valid_sessions = {sid for sid, length in session_lengths.items() if length >= 4}
+            test_df = test_df[test_df['pseudo_session_trajectory_id'].isin(valid_sessions)]
+            
+            # Ensure the trajectory num of each user is between [3,100]
+            session_counts = test_df.groupby('UserId')['pseudo_session_trajectory_id'].nunique()
+            valid_users = session_counts[(session_counts >= 3) & (session_counts <= 100)].index
+            test_df = test_df[test_df['UserId'].isin(valid_users)]
+            
+            # Keep one traj for each user
             last_session_ids = test_df.groupby('UserId')['pseudo_session_trajectory_id'].max()
             test_df = test_df[test_df['pseudo_session_trajectory_id'].isin(last_session_ids)]
-            df = df[df['SplitTag'] != 'test']
-            df = pd.concat([df, test_df], ignore_index=True)
+            
+            # Get 200 trajories for test set 
+            unique_trajectories = test_df['pseudo_session_trajectory_id'].unique()
+            if len(unique_trajectories) > 200:
+                selected_trajectories = unique_trajectories[:200]  
+                test_df = test_df[test_df['pseudo_session_trajectory_id'].isin(selected_trajectories)]
+            else:
+                print("Less than 200 unique trajectories available.")
+       # Use same users as test set
+        valid_users = set(test_df['UserId'].values)
+        df = df[df['UserId'].isin(valid_users)]
         
+        df['UserRank'] = df.groupby('UserId')['UTCTimeOffset'].rank(method='first')
 
         # do label encoding
         if do_label_encode:
@@ -179,12 +194,10 @@ class FileReader(FileReaderBase):
                     poi_id_le, poi_category_le, user_id_le, hour_id_le, weekday_id_le,
                     padding_poi_ie, padding_poi_category, padding_user_id, padding_hour_id, padding_weekday_id
                 ], f) 
-        
-        # Re-encode user IDs, trajectory IDs and check-in IDs to ensure continuity
+     
+        # Re-encode trajectory IDs and check-in IDs to ensure continuity
         df['check_ins_id'] = df['UTCTimeOffset'].rank(ascending=True, method='first') - 1 
-        user_id_map = {id: idx for idx, id in enumerate(sorted(df['UserId'].unique()))}
         traj_id_map = {id: idx for idx, id in enumerate(sorted(df['pseudo_session_trajectory_id'].unique()))}
-        df['UserId'] = df['UserId'].map(user_id_map)
         df['pseudo_session_trajectory_id'] = df['pseudo_session_trajectory_id'].map(traj_id_map)
 
         # Ignore the first check-in of every trajectory when creating samples
