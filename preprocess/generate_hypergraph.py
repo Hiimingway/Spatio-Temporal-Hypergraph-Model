@@ -383,11 +383,12 @@ def filter_chunk(row, col, data, he_size, chunk_num=10, threshold=0.02, filter_m
     # Split the data to multiple chunks for large data
     chunk_bin = np.linspace(0, row.shape[0], chunk_num, dtype=np.int64)
     rows, cols, datas = [], [], []
+    #  row=traj2traj.row,col=traj2traj.col,data=traj2traj.data,chunk_num=chunk_num(10),he_size=traj_size_adjust
     for i in tqdm(range(len(chunk_bin) - 1)):
-        row_chunk = row[chunk_bin[i]:chunk_bin[i + 1]]
-        col_chunk = col[chunk_bin[i]:chunk_bin[i + 1]]
+        row_chunk = row[chunk_bin[i]:chunk_bin[i + 1]]   #row index of traj_id in traj2traj(coo matrix)
+        col_chunk = col[chunk_bin[i]:chunk_bin[i + 1]]   #col index of traj_id in traj2traj(coo matrix)
         data_chunk = data[chunk_bin[i]:chunk_bin[i + 1]]
-        # he_size = traj_poi_map
+        # he_size = traj_size_adjust
         # traj_poi_map = data[['PoiId', traj_column]].drop_duplicates()
         # traj_size_adjust = traj_poi_map.groupby(traj_column).apply(len).tolist()
         source_size = np.array(list(map(he_size.__getitem__, row_chunk.tolist())))
@@ -402,5 +403,5 @@ def filter_chunk(row, col, data, he_size, chunk_num=10, threshold=0.02, filter_m
         rows.append(row_chunk[filter_mask])
         cols.append(col_chunk[filter_mask])
         datas.append(metric[filter_mask])
-
+# traj2traj_original_metric = coo_matrix((data_filtered, (row_filtered, col_filtered)), shape=traj2traj.shape)
     return np.concatenate(rows), np.concatenate(cols), np.concatenate(datas)

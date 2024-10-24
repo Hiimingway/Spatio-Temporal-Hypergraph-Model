@@ -231,6 +231,7 @@ class NeighborSampler(torch.utils.data.DataLoader):
 
         # Trajectory without checkin neighbors is not allowed!!!
         if adj_t.storage.row().unique().shape[0] != batch_size:
+        #     # Exists a node has no outward edges in the sample!!
             diff_node = list(set(range(batch_size)) - set(adj_t.storage.row().unique().tolist()))
             raise ValueError(
                 f'[NeighborSampler] Trajectory without checkin neighbors after filtering by max_time is not allowed!!\n'

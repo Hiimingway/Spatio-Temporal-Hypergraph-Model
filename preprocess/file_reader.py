@@ -180,11 +180,8 @@ class FileReader(FileReaderBase):
                     padding_poi_ie, padding_poi_category, padding_user_id, padding_hour_id, padding_weekday_id
                 ], f) 
         
-        # Time can be reordered
-        df['check_ins_id'] = df['UTCTimeOffset'].rank(ascending=True, method='first') - 1
-        # Recompute session ids to be consecutive for each user
-        
-        # Re-encode user IDs and trajectory IDs to ensure continuity
+        # Re-encode user IDs, trajectory IDs and check-in IDs to ensure continuity
+        df['check_ins_id'] = df['UTCTimeOffset'].rank(ascending=True, method='first') - 1 
         user_id_map = {id: idx for idx, id in enumerate(sorted(df['UserId'].unique()))}
         traj_id_map = {id: idx for idx, id in enumerate(sorted(df['pseudo_session_trajectory_id'].unique()))}
         df['UserId'] = df['UserId'].map(user_id_map)

@@ -1,7 +1,7 @@
 dataset_args:
-  dataset_name: nyc
-  min_poi_freq: 9
-  min_user_freq: 9
+  dataset_name: admove
+  min_poi_freq: 1
+  min_user_freq: 1
   session_time_interval: 4320
   threshold: 0.005
   filter_mode: jaccard
