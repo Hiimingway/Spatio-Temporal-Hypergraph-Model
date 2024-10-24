@@ -129,7 +129,7 @@ class FileReader(FileReaderBase):
                 start_user = user
                 current_session_id += 1
                 session_length = 1
-            elif time_diff.total_seconds() / 60 > session_time_interval:
+            elif time_diff.total_seconds() / 60 > session_time_interval:  
                 # same user, beyond interval
                 current_session_id += 1  #session id
                 session_length = 1  #session length
@@ -185,8 +185,8 @@ class FileReader(FileReaderBase):
         # Recompute session ids to be consecutive for each user
         
         # Re-encode user IDs and trajectory IDs to ensure continuity
-        user_id_map = {id: idx for idx, id in enumerate(sorted(df['UserId'].unique()),1)}
-        traj_id_map = {id: idx for idx, id in enumerate(sorted(df['pseudo_session_trajectory_id'].unique()),1)}
+        user_id_map = {id: idx for idx, id in enumerate(sorted(df['UserId'].unique()))}
+        traj_id_map = {id: idx for idx, id in enumerate(sorted(df['pseudo_session_trajectory_id'].unique()))}
         df['UserId'] = df['UserId'].map(user_id_map)
         df['pseudo_session_trajectory_id'] = df['pseudo_session_trajectory_id'].map(traj_id_map)
 
